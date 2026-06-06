@@ -6,13 +6,24 @@ import { Pagination } from "@/components/ui/pagination"
 import { LoadingState } from "@/components/ui/LoadingState"
 import { ErrorMessage } from "@/components/ui/ErrorMessage"
 import { EmptyState } from "@/components/ui/EmptyState"
-import { Target, Calendar, CheckCircle2, TrendingUp, Trophy } from "lucide-react"
+import { Calendar, CheckCircle2, TrendingUp, Trophy } from "lucide-react"
 
-const PAGE_SIZE = 2
+function formatDecimal(value) {
+  const num = parseFloat(value)
+  return Number.isNaN(num) ? "0.00" : num.toFixed(2)
+}
+
+function getProgress(goal) {
+  const current = parseFloat(goal.current_value) || 0
+  const target = parseFloat(goal.target_value) || 1
+  const pct = Math.min(100, Math.round((current / target) * 100))
+  return { current, target, pct }
+}
 
 export default function GoalsPage() {
   const [data, setData] = useState({ count: 0, results: [] })
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
@@ -21,11 +32,16 @@ export default function GoalsPage() {
     setLoading(true)
     setError(false)
     try {
-      const params = { page, page_size: PAGE_SIZE }
-      const { data: resp } = await api.get("/goals/", { params })
+      const { data: resp } = await api.get("/goals/", { params: { page } })
+      const results = resp.results ?? (Array.isArray(resp) ? resp : [])
+
+      if (page === 1 && results.length > 0) {
+        setPageSize(results.length)
+      }
+
       setData({
         count: resp.count ?? 0,
-        results: resp.results ?? (Array.isArray(resp) ? resp : []),
+        results,
       })
     } catch {
       setError(true)
@@ -41,15 +57,14 @@ export default function GoalsPage() {
   const handleAchieveGoal = async (goalId) => {
     setActionLoading(goalId)
     try {
-      await api.post(`/goals/${goalId}/achieve/`)
-      // Refrescar los datos localmente
+      await api.post(`/goals/${goalId}/achieve/`, {})
       await fetchGoals()
-    } catch (err) {
+    } catch {
       alert("Error al marcar la meta como alcanzada. Inténtalo de nuevo.")
     } finally {
       setActionLoading(null)
     }
-  };
+  }
 
   return (
     <main className="flex-1 p-6 space-y-6">
@@ -65,7 +80,6 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      {/* Estados de carga / error / vacío */}
       {loading && <LoadingState message="Cargando metas de aprendizaje..." />}
 
       {!loading && error && (
@@ -83,19 +97,17 @@ export default function GoalsPage() {
         />
       )}
 
-      {/* Grid de Metas */}
       {!loading && !error && data.results.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.results.map((goal) => {
-            const pct = Math.min(100, Math.round((goal.current_value / goal.target_value) * 100))
-            const isAchieved = goal.status === 'achieved'
+            const { current, target, pct } = getProgress(goal)
+            const isAchieved = goal.status === "achieved"
 
             return (
               <div
                 key={goal.id}
                 className="rounded-lg border border-border p-5 bg-background space-y-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between"
               >
-                {/* Decoración lateral según estado */}
                 <div
                   className={`absolute left-0 top-0 bottom-0 w-1 ${
                     isAchieved ? "bg-emerald-500" : "bg-primary"
@@ -134,12 +146,11 @@ export default function GoalsPage() {
                 </div>
 
                 <div className="space-y-3 pt-3 border-t border-border mt-auto">
-                  {/* Progreso */}
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs font-medium">
                       <span>Progreso</span>
                       <span>
-                        {goal.current_value} / {goal.target_value} ({pct}%)
+                        {formatDecimal(current)} / {formatDecimal(target)} ({pct}%)
                       </span>
                     </div>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
@@ -152,7 +163,6 @@ export default function GoalsPage() {
                     </div>
                   </div>
 
-                  {/* Metadatos inferiores */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
                     <div className="flex items-center gap-1">
                       <Calendar className="size-3.5" />
@@ -184,12 +194,11 @@ export default function GoalsPage() {
         </div>
       )}
 
-      {/* Paginación */}
       {!loading && !error && (
         <Pagination
           count={data.count}
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           onPageChange={setPage}
         />
       )}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import api from "@/lib/api"
+import { LoadingState } from "@/components/ui/LoadingState"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -24,7 +25,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <main className="flex-1 p-6">
-        <p className="text-sm text-muted-foreground">Cargando...</p>
+        <LoadingState message="Cargando perfil..." />
       </main>
     )
   }

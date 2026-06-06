@@ -3,58 +3,54 @@
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import api from "@/lib/api"
-
-// Componentes reutilizables
-import { Pagination }     from "@/components/ui/pagination"
-import { LoadingState }   from "@/components/ui/LoadingState"
-import { ErrorMessage }   from "@/components/ui/ErrorMessage"
-import { EmptyState }     from "@/components/ui/EmptyState"
-import { SkillCard }      from "@/components/skills/SkillCard"
+import { Pagination } from "@/components/ui/pagination"
+import { LoadingState } from "@/components/ui/LoadingState"
+import { ErrorMessage } from "@/components/ui/ErrorMessage"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { SkillCard } from "@/components/skills/SkillCard"
 import { CategoryFilter } from "@/components/skills/CategoryFilter"
-import { OrderSelector }  from "@/components/skills/OrderSelector"
-
+import { OrderSelector } from "@/components/skills/OrderSelector"
 import { Search } from "lucide-react"
-
-const PAGE_SIZE = 3
 
 export default function SkillsPage() {
   const router = useRouter()
 
-  // Estado de datos
-  const [data, setData]         = useState({ count: 0, results: [] })
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(false)
+  const [data, setData] = useState({ count: 0, results: [] })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [pageSize, setPageSize] = useState(10)
 
-  // Estado de filtros
-  const [category, setCategory]       = useState(null)
-  const [ordering, setOrdering]       = useState("name")
-  const [page, setPage]               = useState(1)
+  const [category, setCategory] = useState(null)
+  const [ordering, setOrdering] = useState("name")
+  const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState("")
-  const [search, setSearch]           = useState("")
+  const [search, setSearch] = useState("")
 
-  // Debounce del campo de búsqueda: espera 350 ms antes de lanzar la petición
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1) }, 350)
     return () => clearTimeout(t)
   }, [searchInput])
 
-  // Resetear página al cambiar categoría u ordenamiento
   useEffect(() => { setPage(1) }, [category, ordering])
 
   const fetchSkills = useCallback(async () => {
     setLoading(true)
     setError(false)
     try {
-      const params = { ordering, page, page_size: PAGE_SIZE }
+      const params = { ordering, page }
       if (category) params.category = category
-      if (search)   params.search   = search
+      if (search) params.search = search
 
       const { data: resp } = await api.get("/skills/", { params })
+      const results = resp.results ?? (Array.isArray(resp) ? resp : [])
 
-      // El API puede devolver respuesta paginada {count, results} o array directo
+      if (page === 1 && results.length > 0) {
+        setPageSize(results.length)
+      }
+
       setData({
-        count:   resp.count   ?? 0,
-        results: resp.results ?? (Array.isArray(resp) ? resp : []),
+        count: resp.count ?? 0,
+        results,
       })
     } catch {
       setError(true)
@@ -69,10 +65,8 @@ export default function SkillsPage() {
     <main className="flex-1 p-6 space-y-4">
       <h1 className="text-xl font-semibold">Skills</h1>
 
-      {/* Filtro por categoría */}
       <CategoryFilter selected={category} onChange={setCategory} />
 
-      {/* Barra de búsqueda + selector de orden */}
       <div className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
@@ -86,7 +80,6 @@ export default function SkillsPage() {
         <OrderSelector value={ordering} onChange={setOrdering} />
       </div>
 
-      {/* Estados de carga / error / vacío */}
       {loading && <LoadingState message="Cargando skills..." />}
 
       {!loading && error && (
@@ -108,7 +101,6 @@ export default function SkillsPage() {
         />
       )}
 
-      {/* Grid de tarjetas */}
       {!loading && !error && data.results.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {data.results.map((skill) => (
@@ -121,12 +113,11 @@ export default function SkillsPage() {
         </div>
       )}
 
-      {/* Paginación reutilizable */}
       {!loading && !error && (
         <Pagination
           count={data.count}
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           onPageChange={setPage}
         />
       )}

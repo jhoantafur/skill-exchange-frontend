@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react"
 import api from "@/lib/api"
 import { Pagination } from "@/components/ui/pagination"
+import { LoadingState } from "@/components/ui/LoadingState"
+import { ErrorMessage } from "@/components/ui/ErrorMessage"
+import { EmptyState } from "@/components/ui/EmptyState"
 import { Search } from "lucide-react"
-
-const PAGE_SIZE = 3
 
 function getInitials(firstName, lastName) {
   return [firstName, lastName]
@@ -18,11 +19,12 @@ function getInitials(firstName, lastName) {
 export default function UsersPage() {
   const [data, setData] = useState({ count: 0, results: [] })
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1) }, 350)
     return () => clearTimeout(t)
@@ -30,16 +32,23 @@ export default function UsersPage() {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
+    setError(false)
     try {
-      const params = { page, page_size: PAGE_SIZE }
+      const params = { page }
       if (search) params.search = search
       const { data: resp } = await api.get("/users/", { params })
+      const results = resp.results ?? (Array.isArray(resp) ? resp : [])
+
+      if (page === 1 && results.length > 0) {
+        setPageSize(results.length)
+      }
+
       setData({
         count: resp.count ?? 0,
-        results: resp.results ?? (Array.isArray(resp) ? resp : []),
+        results,
       })
     } catch {
-      setData({ count: 0, results: [] })
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -53,8 +62,7 @@ export default function UsersPage() {
     <main className="flex-1 p-6 space-y-4">
       <h1 className="text-xl font-semibold">Usuarios</h1>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <input
           className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring/50 placeholder:text-muted-foreground"
@@ -64,33 +72,41 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/50">
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuario</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Email</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">
-                Fecha de ingreso
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                  Cargando...
-                </td>
+      {loading && <LoadingState message="Cargando usuarios..." />}
+
+      {!loading && error && (
+        <ErrorMessage
+          message="No se pudieron cargar los usuarios. Revisa tu conexión."
+          onRetry={fetchUsers}
+        />
+      )}
+
+      {!loading && !error && data.results.length === 0 && (
+        <EmptyState
+          icon="👤"
+          title="Sin usuarios"
+          message={
+            search
+              ? "Ningún usuario coincide con tu búsqueda."
+              : "No hay usuarios disponibles."
+          }
+        />
+      )}
+
+      {!loading && !error && data.results.length > 0 && (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuario</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Email</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">
+                  Fecha de ingreso
+                </th>
               </tr>
-            ) : data.results.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                  No se encontraron usuarios.
-                </td>
-              </tr>
-            ) : (
-              data.results.map((user) => (
+            </thead>
+            <tbody>
+              {data.results.map((user) => (
                 <tr key={user.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -113,19 +129,20 @@ export default function UsersPage() {
                       : "—"}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Pagination */}
-      <Pagination
-        count={data.count}
-        page={page}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
-      />
+      {!loading && !error && (
+        <Pagination
+          count={data.count}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
+      )}
     </main>
   )
 }

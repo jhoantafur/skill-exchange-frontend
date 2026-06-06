@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
+import { cn, isNavActive } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { HamburgerMenu } from "@/components/layout/HamburgerMenu"
 
@@ -19,7 +19,6 @@ export default function DashboardLayout({ children }) {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Protección de ruta: si no hay token, redirige al login
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     if (!token) router.replace("/login")
@@ -34,13 +33,11 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur px-6 py-3 flex items-center justify-between">
-        {/* Marca + nav desktop */}
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="text-base font-semibold">
             Skill Exchange
           </Link>
 
-          {/* Navegación visible solo en desktop */}
           <nav className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map((link) => (
               <Link
@@ -48,7 +45,7 @@ export default function DashboardLayout({ children }) {
                 href={link.href}
                 className={cn(
                   "px-3 py-1.5 rounded-md text-sm transition-colors",
-                  pathname === link.href
+                  isNavActive(pathname, link.href)
                     ? "bg-muted font-medium text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
@@ -59,9 +56,7 @@ export default function DashboardLayout({ children }) {
           </nav>
         </div>
 
-        {/* Acciones del lado derecho */}
         <div className="flex items-center gap-2">
-          {/* Botón de logout visible solo en desktop */}
           <Button
             variant="outline"
             size="sm"
@@ -71,7 +66,6 @@ export default function DashboardLayout({ children }) {
             Cerrar sesión
           </Button>
 
-          {/* Menú hamburguesa visible solo en mobile */}
           <HamburgerMenu links={NAV_LINKS} onLogout={handleLogout} />
         </div>
       </header>

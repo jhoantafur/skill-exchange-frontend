@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils"
 
-// Mapeo de categorías a etiquetas legibles
 const CATEGORY_LABELS = {
   technical:            "Technical",
   creative:             "Creative",
@@ -11,7 +10,6 @@ const CATEGORY_LABELS = {
   other:                "Other",
 }
 
-// Color de badge por nivel
 const LEVEL_STYLES = {
   beginner:     "bg-green-50 text-green-700 border-green-200",
   intermediate: "bg-blue-50 text-blue-700 border-blue-200",
@@ -26,12 +24,6 @@ const LEVEL_LABELS = {
   expert:       "Expert",
 }
 
-/**
- * SkillCard — tarjeta que representa una habilidad.
- * Props:
- *   skill    — objeto con { id, name, category, level }
- *   onClick  — callback cuando el usuario hace clic (para navegar al detalle)
- */
 export function SkillCard({ skill, onClick }) {
   return (
     <div
@@ -40,24 +32,16 @@ export function SkillCard({ skill, onClick }) {
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
       className={cn(
-        "rounded-lg border border-border p-4 bg-background space-y-2 transition-all",
+        "rounded-lg border border-border p-4 bg-background space-y-1 transition-all",
         onClick && "cursor-pointer hover:shadow-md hover:border-foreground/20 active:scale-[0.99]"
       )}
     >
-      {/* Nombre de la skill */}
-      <p className="font-medium text-sm leading-tight">{skill.name}</p>
-
-      <div className="flex items-center justify-between gap-2">
-        {/* Categoría */}
-        <span className="text-xs text-muted-foreground">
-          {CATEGORY_LABELS[skill.category] ?? skill.category}
-        </span>
-
-        {/* Badge de nivel */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium text-sm leading-tight">{skill.name}</p>
         {skill.level && (
           <span
             className={cn(
-              "text-xs font-medium px-2 py-0.5 rounded-full border",
+              "text-xs font-medium px-2 py-0.5 rounded-full border shrink-0",
               LEVEL_STYLES[skill.level] ?? "bg-muted text-muted-foreground border-border"
             )}
           >
@@ -65,6 +49,9 @@ export function SkillCard({ skill, onClick }) {
           </span>
         )}
       </div>
+      <span className="text-xs text-muted-foreground">
+        {CATEGORY_LABELS[skill.category] ?? skill.category}
+      </span>
     </div>
   )
 }
